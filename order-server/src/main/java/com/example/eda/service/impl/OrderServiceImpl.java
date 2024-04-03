@@ -59,7 +59,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     @SneakyThrows
     public void updateOrder(UpdateOrder updateOrder) {
         OrderUpdatedEvent orderUpdatedEvent = new OrderUpdatedEvent(updateOrder.id(), updateOrder.status());
-        Optional<OrderEvent> orderEvent = orderEventRepository.findByAggregateId(updateOrder.id().toString());
+        Optional<OrderEvent> orderEvent = orderEventRepository.findFirstByAggregateIdOrderByAggregateIdDesc(updateOrder.id().toString());
 
         orderEvent.ifPresent(oldOrderEvent -> {
             try {

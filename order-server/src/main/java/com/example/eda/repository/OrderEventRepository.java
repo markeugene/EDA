@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderEventRepository extends MongoRepository<OrderEvent, String> {
-    Optional<OrderEvent> findByAggregateId(String orderId);
+    Optional<OrderEvent> findFirstByAggregateIdOrderByAggregateIdDesc(String orderId);
 
     List<OrderEvent> findAllByAggregateId(String orderId);
 }
