@@ -14,6 +14,6 @@ public class KafkaConsumer {
     }
 
     private void notifyCouriers(UUID orderId) {
-        return;
+        System.out.println("Payment completed");
     }
 }

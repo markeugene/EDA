@@ -1,6 +1,7 @@
 package com.example.eda.service.impl;
 
 import com.example.eda.CreateOrder;
+import com.example.eda.producer.KafkaProducer;
 import com.example.eda.UpdateOrder;
 import com.example.eda.event.OrderCreatedEvent;
 import com.example.eda.event.OrderUpdatedEvent;
@@ -27,12 +28,14 @@ import java.util.concurrent.atomic.AtomicReference;
 public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     private final OrderEventRepository orderEventRepository;
     private final ObjectMapper objectMapper;
+    private final KafkaProducer kafkaProducer;
     @Autowired
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public OrderServiceImpl(OrderEventRepository orderEventRepository, KafkaTemplate<String, Object> kafkaTemplate) {
+    public OrderServiceImpl(OrderEventRepository orderEventRepository, KafkaTemplate<String, Object> kafkaTemplate,KafkaProducer kafkaProducer) {
         this.orderEventRepository = orderEventRepository;
         this.kafkaTemplate = kafkaTemplate;
+        this.kafkaProducer=kafkaProducer;
         objectMapper = new ObjectMapper();
     }
 
@@ -45,6 +48,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
         CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send("ORDER_CREATED", orderCreatedEvent);
         future.whenComplete((result, ex) -> {
             if (ex == null) {
+                kafkaProducer.sendOrderCreated(orderCreatedEvent);
                 System.out.println("Sent message=[" + "message" +
                         "] with offset=[" + result.getRecordMetadata().offset() + "]");
             } else {
@@ -73,6 +77,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
                 CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send("ORDER_UPDATED", orderUpdatedEvent);
                 future.whenComplete((result, ex) -> {
                     if (ex == null) {
+                        kafkaProducer.sendOrderUpdated(orderUpdatedEvent);
                         System.out.println("Sent message=[" + "message" +
                                 "] with offset=[" + result.getRecordMetadata().offset() + "]");
                     } else {

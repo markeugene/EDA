@@ -1,6 +1,6 @@
 package com.example.eda.config;
 
-import com.example.eda.KafkaConsumer;
+import com.example.eda.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +24,6 @@ public class KafkaConsumerConfig {
 
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
-
         return new DefaultKafkaConsumerFactory<String, Object>(config());
     }
 
