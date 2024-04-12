@@ -1,20 +1,15 @@
 package com.example.eda.controller;
 
 import com.example.eda.cqrs.aggregator.OrderAggregator;
+import com.example.eda.cqrs.command.CancelOrderCommand;
 import com.example.eda.cqrs.command.CreateOrderCommand;
 import com.example.eda.cqrs.command.UpdateOrderCommand;
+import com.example.eda.cqrs.query.OrderByIdQuery;
 import com.example.eda.model.Order;
 import com.example.eda.service.OrderReadService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/orders")
@@ -25,7 +20,7 @@ public class OrderController {
     private final OrderReadService orderReadService;
 
     @PostMapping
-    public ResponseEntity<String> createOrder(@RequestBody CreateOrderCommand orderToCreate) throws JsonProcessingException {
+    public ResponseEntity<String> createOrder(@RequestBody CreateOrderCommand orderToCreate) {
 
         if (orderToCreate.quantity() < 1) {
             return ResponseEntity.badRequest().build();
@@ -37,17 +32,26 @@ public class OrderController {
     }
 
     @PutMapping(path = "/update")
-    public ResponseEntity<String> updateOrder(@RequestBody UpdateOrderCommand updateOrderCommand) throws JsonProcessingException {
+    public ResponseEntity<String> updateOrder(@RequestBody UpdateOrderCommand updateOrderCommand) {
 
         orderAggregator.handleUpdateOrderCommand(updateOrderCommand);
 
         return ResponseEntity.ok("Success");
     }
 
-    @GetMapping(path = "/{id}")
-    public ResponseEntity<Order> getOrder(@PathVariable String id) throws JsonProcessingException {
+    @DeleteMapping(path = "/cancel")
+    public ResponseEntity<String> cancelOrder(@RequestBody CancelOrderCommand cancelOrderCommand) {
 
-        Order orderById = orderReadService.getOrderById(id);
+        orderAggregator.handeCancelOrderCommand(cancelOrderCommand);
+
+        return ResponseEntity.ok("Success");
+    }
+
+
+    @GetMapping
+    public ResponseEntity<Order> getOrder(@RequestBody OrderByIdQuery orderByIdQuery) {
+
+        Order orderById = orderReadService.getOrderById(orderByIdQuery);
 
         return ResponseEntity.ok(orderById);
     }

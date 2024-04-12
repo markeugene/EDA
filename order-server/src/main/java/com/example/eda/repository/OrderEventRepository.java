@@ -9,9 +9,11 @@ import java.util.List;
 import java.util.Optional;
 @Repository
 public interface OrderEventRepository extends MongoRepository<OrderEvent, String> {
+
+    List<OrderEvent> findAllByAggregateIdOrderByAggregateIdDesc(String orderId);
+
     Optional<OrderEvent> findFirstByAggregateIdOrderByAggregateIdDesc(String orderId);
 
-    List<OrderEvent> findAllByAggregateId(String orderId);
     @Query("{ 'eventData.status' : ?0 }")
     List<OrderEvent> findAllByStatus(String status);
 }

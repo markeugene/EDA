@@ -2,7 +2,6 @@ package com.example.eda.cqrs.aggregator;
 
 import com.example.eda.cqrs.command.CancelOrderCommand;
 import com.example.eda.cqrs.command.CreateOrderCommand;
-
 import com.example.eda.cqrs.command.UpdateOrderCommand;
 import com.example.eda.service.OrderWriteService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +21,6 @@ public class OrderAggregator {
     }
 
     public void handeCancelOrderCommand(CancelOrderCommand cancelOrderCommand){
-        //orderService.cancelOrder(cancelOrderCommand);
+        orderService.cancelOrder(cancelOrderCommand);
     }
 }
