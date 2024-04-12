@@ -1,12 +1,17 @@
 package com.example.eda.service.impl;
 
+import com.example.eda.cqrs.command.CancelOrderCommand;
 import com.example.eda.cqrs.command.CreateOrderCommand;
-import com.example.eda.producer.KafkaProducer;
 import com.example.eda.cqrs.command.UpdateOrderCommand;
+import com.example.eda.cqrs.projection.OrderProjection;
+import com.example.eda.cqrs.query.FirstOrderByIdQuery;
+import com.example.eda.cqrs.query.OrderByIdQuery;
+import com.example.eda.event.OrderCancelledEvent;
 import com.example.eda.event.OrderCreatedEvent;
 import com.example.eda.event.OrderUpdatedEvent;
 import com.example.eda.model.Order;
 import com.example.eda.model.OrderEvent;
+import com.example.eda.producer.KafkaProducer;
 import com.example.eda.repository.OrderEventRepository;
 import com.example.eda.service.OrderReadService;
 import com.example.eda.service.OrderWriteService;
@@ -27,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     private final OrderEventRepository orderEventRepository;
+    private final OrderProjection orderProjection;
     private final ObjectMapper objectMapper;
     private final KafkaProducer kafkaProducer;
 
@@ -35,7 +41,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     @SneakyThrows
     public void createOrder(CreateOrderCommand createOrderCommand) {
         OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(ThreadLocalRandom.current().nextLong(), createOrderCommand.item(), "CREATED", createOrderCommand.totalCost(), createOrderCommand.orderDestination(), createOrderCommand.userId());
-        OrderEvent orderEvent = new  OrderEvent(orderCreatedEvent.getId().toString(), "ORDER_CREATED", objectMapper.writeValueAsString(orderCreatedEvent));
+        OrderEvent orderEvent = new OrderEvent(orderCreatedEvent.getId().toString(), "ORDER_CREATED", objectMapper.writeValueAsString(orderCreatedEvent));
         orderEventRepository.save(orderEvent);
         CompletableFuture<SendResult<String, Object>> future = kafkaProducer.sendOrderCreated(orderCreatedEvent);
         future.whenComplete((result, ex) -> {
@@ -54,7 +60,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     @SneakyThrows
     public void updateOrder(UpdateOrderCommand updateOrderCommand) {
         OrderUpdatedEvent orderUpdatedEvent = new OrderUpdatedEvent(updateOrderCommand.id(), updateOrderCommand.status());
-        Optional<OrderEvent> orderEvent = orderEventRepository.findFirstByAggregateIdOrderByAggregateIdDesc(updateOrderCommand.id().toString());
+        Optional<OrderEvent> orderEvent = orderProjection.handle(new FirstOrderByIdQuery(updateOrderCommand.id()));
 
         orderEvent.ifPresent(oldOrderEvent -> {
             try {
@@ -82,13 +88,22 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
 
     }
 
+    @SneakyThrows
     @Override
-    public Order getOrderById(String orderId) {
-        List<OrderEvent> allByAggregateId = orderEventRepository.findAllByAggregateId(orderId);
+    public void cancelOrder(CancelOrderCommand cancelOrderCommand) {
+        OrderCancelledEvent orderToCancel = new OrderCancelledEvent(cancelOrderCommand.id(), "CANCELED");
+        OrderEvent orderCanceledEvent = new OrderEvent(orderToCancel.getId().toString(), "ORDER_CANCELED", objectMapper.writeValueAsString(orderToCancel));
+        orderEventRepository.save(orderCanceledEvent);
+
+    }
+
+    @Override
+    public Order getOrderById(OrderByIdQuery query) {
+        List<OrderEvent> orderEvent = orderProjection.handle(query);
         Order orderToReturn = new Order();
         AtomicReference<Object> specificEvent = new AtomicReference<>(new Object());
-        orderToReturn.setId(Long.valueOf(orderId));
-        allByAggregateId.forEach(event -> {
+        orderToReturn.setId(query.aggregateId());
+        orderEvent.forEach(event -> {
             if (event.getEventType().equals("ORDER_CREATED")) {
                 try {
                     specificEvent.set(objectMapper.readValue(event.getEventData(), OrderCreatedEvent.class));
@@ -108,11 +123,13 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }
-                OrderUpdatedEvent orderUpdatedEvent= (OrderUpdatedEvent) specificEvent.get();
+                OrderUpdatedEvent orderUpdatedEvent = (OrderUpdatedEvent) specificEvent.get();
                 orderToReturn.setStatus(orderUpdatedEvent.getStatus());
             }
         });
 
         return orderToReturn;
     }
+
+
 }
