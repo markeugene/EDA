@@ -2,7 +2,6 @@ package com.example.eda.consumer;
 
 import com.example.eda.event.OrderCreatedEvent;
 import com.example.eda.event.OrderUpdatedEvent;
-import com.example.eda.service.OrderWriteReadSyncService;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -15,8 +14,6 @@ import java.util.UUID;
 public class KafkaConsumer {
     private final int rangeMin = 1;
     private final int rangeMax = 50;
-    @Autowired
-    private OrderWriteReadSyncService orderWriteReadSyncService;
 
 
     @KafkaListener(groupId = "test-group", topics = "paymentFailed")
@@ -31,12 +28,12 @@ public class KafkaConsumer {
 
     @KafkaListener(groupId = "test-group", topics = "ORDER_CREATED")
     public void orderCreated(OrderCreatedEvent orderEvent) {
-        orderWriteReadSyncService.syncOrderCreate(orderEvent);
+        /*orderWriteReadSyncService.syncOrderCreate(orderEvent);*/
     }
 
     @KafkaListener(groupId = "test-group", topics = "ORDER_UPDATED")
     public void orderCreated(OrderUpdatedEvent orderEvent) {
-        orderWriteReadSyncService.syncOrderUpdate(orderEvent);
+        /*orderWriteReadSyncService.syncOrderUpdate(orderEvent);*/
     }
 
 

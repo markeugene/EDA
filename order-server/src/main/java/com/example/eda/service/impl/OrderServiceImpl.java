@@ -1,8 +1,8 @@
 package com.example.eda.service.impl;
 
-import com.example.eda.CreateOrder;
+import com.example.eda.cqrs.command.CreateOrderCommand;
 import com.example.eda.producer.KafkaProducer;
-import com.example.eda.UpdateOrder;
+import com.example.eda.cqrs.command.UpdateOrderCommand;
 import com.example.eda.event.OrderCreatedEvent;
 import com.example.eda.event.OrderUpdatedEvent;
 import com.example.eda.model.Order;
@@ -12,9 +12,8 @@ import com.example.eda.service.OrderReadService;
 import com.example.eda.service.OrderWriteService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 
@@ -25,30 +24,22 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
+@RequiredArgsConstructor
 public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     private final OrderEventRepository orderEventRepository;
     private final ObjectMapper objectMapper;
     private final KafkaProducer kafkaProducer;
-    @Autowired
-    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public OrderServiceImpl(OrderEventRepository orderEventRepository, KafkaTemplate<String, Object> kafkaTemplate,KafkaProducer kafkaProducer) {
-        this.orderEventRepository = orderEventRepository;
-        this.kafkaTemplate = kafkaTemplate;
-        this.kafkaProducer=kafkaProducer;
-        objectMapper = new ObjectMapper();
-    }
 
     @Override
     @SneakyThrows
-    public void createOrder(CreateOrder createOrder) {
-        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(ThreadLocalRandom.current().nextLong(), createOrder.item(), "CREATED", createOrder.totalCost(), createOrder.orderDestination(), createOrder.userId());
-        OrderEvent orderEvent = new OrderEvent(orderCreatedEvent.getId().toString(), "ORDER_CREATED", objectMapper.writeValueAsString(orderCreatedEvent));
+    public void createOrder(CreateOrderCommand createOrderCommand) {
+        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(ThreadLocalRandom.current().nextLong(), createOrderCommand.item(), "CREATED", createOrderCommand.totalCost(), createOrderCommand.orderDestination(), createOrderCommand.userId());
+        OrderEvent orderEvent = new  OrderEvent(orderCreatedEvent.getId().toString(), "ORDER_CREATED", objectMapper.writeValueAsString(orderCreatedEvent));
         orderEventRepository.save(orderEvent);
-        CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send("ORDER_CREATED", orderCreatedEvent);
+        CompletableFuture<SendResult<String, Object>> future = kafkaProducer.sendOrderCreated(orderCreatedEvent);
         future.whenComplete((result, ex) -> {
             if (ex == null) {
-                kafkaProducer.sendOrderCreated(orderCreatedEvent);
                 System.out.println("Sent message=[" + "message" +
                         "] with offset=[" + result.getRecordMetadata().offset() + "]");
             } else {
@@ -61,23 +52,22 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
 
     @Override
     @SneakyThrows
-    public void updateOrder(UpdateOrder updateOrder) {
-        OrderUpdatedEvent orderUpdatedEvent = new OrderUpdatedEvent(updateOrder.id(), updateOrder.status());
-        Optional<OrderEvent> orderEvent = orderEventRepository.findFirstByAggregateIdOrderByAggregateIdDesc(updateOrder.id().toString());
+    public void updateOrder(UpdateOrderCommand updateOrderCommand) {
+        OrderUpdatedEvent orderUpdatedEvent = new OrderUpdatedEvent(updateOrderCommand.id(), updateOrderCommand.status());
+        Optional<OrderEvent> orderEvent = orderEventRepository.findFirstByAggregateIdOrderByAggregateIdDesc(updateOrderCommand.id().toString());
 
         orderEvent.ifPresent(oldOrderEvent -> {
             try {
                 OrderCreatedEvent orderCreatedEvent = objectMapper.readValue(oldOrderEvent.getEventData(), OrderCreatedEvent.class);
-                orderCreatedEvent.setStatus(updateOrder.status());
+                orderCreatedEvent.setStatus(updateOrderCommand.status());
 
                 OrderEvent newOrderEvent = new OrderEvent(oldOrderEvent.getAggregateId(), "ORDER_UPDATED", objectMapper.writeValueAsString(orderUpdatedEvent));
 
                 orderEventRepository.save(newOrderEvent);
 
-                CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send("ORDER_UPDATED", orderUpdatedEvent);
+                CompletableFuture<SendResult<String, Object>> future = kafkaProducer.sendOrderUpdated(orderUpdatedEvent);
                 future.whenComplete((result, ex) -> {
                     if (ex == null) {
-                        kafkaProducer.sendOrderUpdated(orderUpdatedEvent);
                         System.out.println("Sent message=[" + "message" +
                                 "] with offset=[" + result.getRecordMetadata().offset() + "]");
                     } else {

@@ -1,10 +1,10 @@
 package com.example.eda.service;
 
-import com.example.eda.CreateOrder;
-import com.example.eda.UpdateOrder;
+import com.example.eda.cqrs.command.CreateOrderCommand;
+import com.example.eda.cqrs.command.UpdateOrderCommand;
 
 public interface OrderWriteService {
-    public void createOrder(CreateOrder createOrder);
+     void createOrder(CreateOrderCommand createOrderCommand);
 
-    public void updateOrder(UpdateOrder updateOrder);
+     void updateOrder(UpdateOrderCommand updateOrderCommand);
 }

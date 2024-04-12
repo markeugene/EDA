@@ -1,19 +1,16 @@
-package com.example.eda.model;
-
+package com.example.eda.event;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 
 @AllArgsConstructor
-@NoArgsConstructor
 @Data
-public class Order {
-
+@NoArgsConstructor
+public class OrderPaidEvent{
     private Long id;
     private String item;
     private String status;
-    private Integer quantity;
     private Double totalCost;
     private String orderDestination;
     private String userId;
