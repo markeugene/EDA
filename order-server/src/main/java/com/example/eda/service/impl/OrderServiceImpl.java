@@ -16,6 +16,7 @@ import com.example.eda.producer.KafkaProducer;
 import com.example.eda.repository.OrderEventRepository;
 import com.example.eda.service.OrderReadService;
 import com.example.eda.service.OrderWriteService;
+import com.example.eda.util.OrderEventUtility;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +36,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     private final OrderProjection orderProjection;
     private final ObjectMapper objectMapper;
     private final KafkaProducer kafkaProducer;
+    private final OrderEventUtility orderEventUtility;
 
 
     @Override
@@ -100,48 +101,9 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     @Override
     public Order getOrderById(OrderByIdQuery query) {
         List<OrderEvent> orderEvent = orderProjection.handle(query);
-        Order orderToReturn = new Order();
-        AtomicReference<Object> specificEvent = new AtomicReference<>(new Object());
-        orderToReturn.setId(query.aggregateId());
-        orderEvent.forEach(event -> {
-            if (event.getEventType().equals(EventType.ORDER_CREATED.getName())) {
-                try {
-                    specificEvent.set(objectMapper.readValue(event.getEventData(), OrderCreatedEvent.class));
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-                OrderCreatedEvent createdOrder = (OrderCreatedEvent) specificEvent.get();
-                orderToReturn.setOrderDestination(createdOrder.getOrderDestination());
-                orderToReturn.setStatus(createdOrder.getStatus());
-                orderToReturn.setItem(createdOrder.getItem());
-                orderToReturn.setTotalCost(createdOrder.getTotalCost());
-                orderToReturn.setUserId(createdOrder.getUserId());
-            }
-            if (event.getEventType().equals(EventType.ORDER_UPDATED.getName())) {
-                try {
-                    specificEvent.set(objectMapper.readValue(event.getEventData(), OrderUpdatedEvent.class));
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-                OrderUpdatedEvent orderUpdatedEvent = (OrderUpdatedEvent) specificEvent.get();
-                orderToReturn.setStatus(orderUpdatedEvent.getStatus());
-            }
-            if (event.getEventType().equals(EventType.ORDER_CANCELED.getName())) {
-                try {
-                    specificEvent.set(objectMapper.readValue(event.getEventData(), OrderCreatedEvent.class));
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-                OrderCancelledEvent canceledOrder = (OrderCancelledEvent) specificEvent.get();
-                orderToReturn.setStatus(canceledOrder.getStatus());
 
-            }
-        });
-
-        return orderToReturn;
+        return orderEventUtility.buildOrder(orderEvent, query);
     }
-
-
 
 
 }
