@@ -1,7 +1,6 @@
 package com.example.eda.cqrs.projection;
 
 import com.example.eda.cqrs.query.OrderByIdQuery;
-import com.example.eda.cqrs.query.OrdersByStatusQuery;
 import com.example.eda.event.OrderEvent;
 import com.example.eda.repository.OrderEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +20,5 @@ public class OrderProjection {
         return repository.findAllByAggregateIdOrderByAggregateIdDesc(orderByIdQuery.aggregateId().toString());
     }
 
-    public List<OrderEvent> handle(OrdersByStatusQuery ordersByStatusQuery) {
-        return repository.findAllByStatus(ordersByStatusQuery.status());
-    }
 
 }
