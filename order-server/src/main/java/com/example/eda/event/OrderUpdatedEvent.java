@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class OrderUpdatedEvent {
-    //TODO add price here, or quantity whatever
     private Long id;
     private String status;
+    private String orderDestination;
 }

@@ -1,4 +1,4 @@
-package com.example.eda.model;
+package com.example.eda.event;
 
 
 import lombok.Data;

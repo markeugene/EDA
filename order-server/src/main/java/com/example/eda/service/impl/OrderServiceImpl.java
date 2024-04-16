@@ -5,14 +5,13 @@ import com.example.eda.cqrs.command.CreateOrderCommand;
 import com.example.eda.cqrs.command.UpdateOrderCommand;
 import com.example.eda.cqrs.projection.OrderProjection;
 import com.example.eda.cqrs.query.OrderByIdQuery;
-import com.example.eda.cqrs.query.OrdersByStatusQuery;
 import com.example.eda.enums.EventType;
 import com.example.eda.enums.OrderStatus;
 import com.example.eda.event.OrderCancelledEvent;
 import com.example.eda.event.OrderCreatedEvent;
+import com.example.eda.event.OrderEvent;
 import com.example.eda.event.OrderUpdatedEvent;
 import com.example.eda.model.Order;
-import com.example.eda.model.OrderEvent;
 import com.example.eda.producer.KafkaProducer;
 import com.example.eda.repository.OrderEventRepository;
 import com.example.eda.service.OrderReadService;
@@ -24,7 +23,6 @@ import lombok.SneakyThrows;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -62,8 +60,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     @Override
     @SneakyThrows
     public void updateOrder(UpdateOrderCommand updateOrderCommand) {
-        //TODO here u should recreate Order state (grab all OrderEvents linked with order) -> compare order state with command -> if smth changed save event like orderCancelled Event/Price changed.
-        OrderUpdatedEvent orderUpdatedEvent = new OrderUpdatedEvent(updateOrderCommand.id(), updateOrderCommand.status());
+        OrderUpdatedEvent orderUpdatedEvent = new OrderUpdatedEvent(updateOrderCommand.id(), updateOrderCommand.status(), updateOrderCommand.orderDestination());
         Optional<OrderEvent> orderEvent = orderEventRepository.findFirstByAggregateIdOrderByAggregateIdDesc(orderUpdatedEvent.getId().toString());
 
         orderEvent.ifPresent(oldOrderEvent -> {
@@ -102,8 +99,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
 
     @Override
     public Order getOrderById(OrderByIdQuery query) {
-        //TODO if order was cancelled u will never find it here as cancelled, here u should go build latest stater of order and return it.
-        List<OrderEvent> orderEvent = orderProjection.  handle(query);
+        List<OrderEvent> orderEvent = orderProjection.handle(query);
         Order orderToReturn = new Order();
         AtomicReference<Object> specificEvent = new AtomicReference<>(new Object());
         orderToReturn.setId(query.aggregateId());
@@ -130,18 +126,22 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
                 OrderUpdatedEvent orderUpdatedEvent = (OrderUpdatedEvent) specificEvent.get();
                 orderToReturn.setStatus(orderUpdatedEvent.getStatus());
             }
+            if (event.getEventType().equals(EventType.ORDER_CANCELED.getName())) {
+                try {
+                    specificEvent.set(objectMapper.readValue(event.getEventData(), OrderCreatedEvent.class));
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+                OrderCancelledEvent canceledOrder = (OrderCancelledEvent) specificEvent.get();
+                orderToReturn.setStatus(canceledOrder.getStatus());
+
+            }
         });
 
         return orderToReturn;
     }
 
-    @Override
-    public List<Order> getOrdersByStatus(OrdersByStatusQuery ordersByStatusQuery) {
-        List<OrderEvent> handle = orderProjection.handle(ordersByStatusQuery);
-        List<Order> ordersToReturn = new ArrayList<>();
-        return ordersToReturn;
 
-    }
 
 
 }

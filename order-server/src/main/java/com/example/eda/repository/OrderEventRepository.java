@@ -1,6 +1,6 @@
 package com.example.eda.repository;
 
-import com.example.eda.model.OrderEvent;
+import com.example.eda.event.OrderEvent;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
