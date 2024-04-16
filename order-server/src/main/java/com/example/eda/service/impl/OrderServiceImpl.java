@@ -35,6 +35,8 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     private final ObjectMapper objectMapper;
     private final KafkaProducer kafkaProducer;
 
+    //TODO, move eventTypes to Enum
+
 
     @Override
     @SneakyThrows
@@ -58,6 +60,7 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
     @Override
     @SneakyThrows
     public void updateOrder(UpdateOrderCommand updateOrderCommand) {
+        //TODO here u should recreate Order state (grab all OrderEvents linked with order) -> compare order state with command -> if smth changed save event like orderCancelled Event/Price changed.
         OrderUpdatedEvent orderUpdatedEvent = new OrderUpdatedEvent(updateOrderCommand.id(), updateOrderCommand.status());
         Optional<OrderEvent> orderEvent = orderEventRepository.findFirstByAggregateIdOrderByAggregateIdDesc(orderUpdatedEvent.getId().toString());
 
@@ -93,12 +96,12 @@ public class OrderServiceImpl implements OrderWriteService, OrderReadService {
         OrderCancelledEvent orderToCancel = new OrderCancelledEvent(cancelOrderCommand.id(), "CANCELED");
         OrderEvent orderCanceledEvent = new OrderEvent(orderToCancel.getId().toString(), "ORDER_CANCELED", objectMapper.writeValueAsString(orderToCancel));
         orderEventRepository.save(orderCanceledEvent);
-
     }
 
     @Override
     public Order getOrderById(OrderByIdQuery query) {
-        List<OrderEvent> orderEvent = orderProjection.handle(query);
+        //TODO if order was cancelled u will never find it here as cancelled, here u should go build latest stater of order and return it.
+        List<OrderEvent> orderEvent = orderProjection.  handle(query);
         Order orderToReturn = new Order();
         AtomicReference<Object> specificEvent = new AtomicReference<>(new Object());
         orderToReturn.setId(query.aggregateId());
