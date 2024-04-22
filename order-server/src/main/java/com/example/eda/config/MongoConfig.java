@@ -12,7 +12,6 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
 
     @Override
     protected String getDatabaseName() {
-        // Specify the database name
         return "edd";
     }
 

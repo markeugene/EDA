@@ -24,7 +24,7 @@ public class KafkaConsumerConfig {
 
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
-        return new DefaultKafkaConsumerFactory<String, Object>(config());
+        return new DefaultKafkaConsumerFactory<>(config());
     }
 
     private Map<String, Object> config() {

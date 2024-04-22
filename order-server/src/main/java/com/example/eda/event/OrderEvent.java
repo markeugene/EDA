@@ -10,9 +10,6 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 @NoArgsConstructor
 @Data
 public class OrderEvent {
-    //TODO store only orderEvent, eventData it's what's changed.
-    //TODO delete SQL storage, do replica for mongo, extend amount of orderEvent?
-    // create, changeStatus, changeDestination, changeItems.
     @MongoId
     private String id;
     private String aggregateId;

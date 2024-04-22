@@ -14,11 +14,8 @@ public class OrderProjection {
 
     private final OrderEventRepository repository;
 
-
-
     public List<OrderEvent> handle(OrderByIdQuery orderByIdQuery) {
         return repository.findAllByAggregateIdOrderByAggregateIdDesc(orderByIdQuery.aggregateId().toString());
     }
-
 
 }
